@@ -1,0 +1,45 @@
+﻿@model ProjectTimeLogger.ViewModels.Pager
+
+@{
+    var pageParam = "page";
+    var controller = ViewContext.RouteData.Values["controller"].ToString();
+    var action = ViewContext.RouteData.Values["action"].ToString();
+    var query = System.Web.HttpUtility.ParseQueryString(this.Context.Request.QueryString.ToString());
+}
+
+<nav aria-label="Page navigation example">
+    <ul class="pagination">
+        <li class="page-item @(Model.Page > 1 ? "" : "disabled d-none")" ">
+            <a class="page-link" href="@Url.Action(action, controller, queryString: query.AddOrSet(pageParam, (Model.Page - 1).ToString()))" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+                <span class="sr-only">Previous</span>
+            </a>
+        </li>
+
+        @if (Model.DisplayedPages.First() > 1)
+        {
+            <li class="page-item disabled d-none d-md-inline-block">
+                <a class="border-top-0 border-bottom-0 page-link bg-transparent" href="javascript:void(0)">...</a>
+            </li>
+        }
+
+        @foreach (var page in Model.DisplayedPages)
+        {
+            <li class="page-item @(Model.Page == page ? "active" : "")"><a class="page-link" href="@Url.Action(action, controller, queryString: query.AddOrSet(pageParam, page.ToString()))">@(page)</a></li>
+        }
+
+        @if (Model.DisplayedPages.Last() < Model.PagesCount)
+        {
+            <li class="page-item disabled d-none d-md-inline-block">
+                <a class="border-top-0 border-bottom-0 page-link bg-transparent" href="javascript:void(0)">...</a>
+            </li>
+        }
+
+        <li class="page-item @(Model.Page < Model.PagesCount ? "" : "disabled d-none")">
+            <a class="page-link" href="@Url.Action(action, controller, queryString: query.AddOrSet(pageParam, (Model.Page + 1).ToString()))" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+                <span class="sr-only">Next</span>
+            </a>
+        </li>
+    </ul>
+</nav>

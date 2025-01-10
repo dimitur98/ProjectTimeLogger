@@ -1,0 +1,184 @@
+﻿@model ProjectTimeLogger.ViewModels.UsersSearchModel
+
+@{
+    ViewBag.Title = "Users";
+    var query = System.Web.HttpUtility.ParseQueryString(this.Context.Request.QueryString.ToString());
+}
+
+<h1 class="text-center">@ViewBag.Title (@Model.Response.TotalRecords)</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <partial name="_SearchFormPartial" model="Model.SearchForm" />
+
+        @if (!Model.Response.Records.Any())
+        {
+            <div role="alert" class="alert alert-info">There are no users found.</div>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col"><a href="@Url.Action(null, null, query.AddOrSet("sortBy", "u.first_name").AddOrSet("sortDesc", (!Model.SearchForm.SortDesc ?? false).ToString()))">First Name</a></th>
+                        <th scope="col"><a href="@Url.Action(null, null, query.AddOrSet("sortBy", "u.last_name").AddOrSet("sortDesc", (!Model.SearchForm.SortDesc ?? false).ToString()))">Last Name</a></th>
+                        <th scope="col"><a href="@Url.Action(null, null, query.AddOrSet("sortBy", "u.email").AddOrSet("sortDesc", (!Model.SearchForm.SortDesc ?? false).ToString()))">Email</a></th>
+                        <th scope="col">Hours</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.Response.Records)
+                    {
+                        <tr>
+                            <td>@user.FirstName</td>
+                            <td>@user.LastName</td>
+                            <td>@user.Email</td>
+                            <td>@Model.HoursByUserDict[user.Id].ToString("N2")</td>
+                            <td class="text-nowrap">
+                                <a class="compare-btn" data-user-id="@user.Id" title="Compare"><i class="fa-solid fa-shuffle"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div>
+                <div class="d-inline-block align-top mb-2 me-2">
+                    <partial name="_PaginationPartial" model="Model.ToPager()" />
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Model.Response.Records.Any())
+    {
+        <div class="col-md-6" id="chart-container">
+            <div id="timelog-hours-chart"></div>
+            <div class="text-end">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="chart-type-radio-btn" id="usersTypeBtn" checked>
+                    <label class="form-check-label" for="flexRadioDefault1">
+                        Users
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="chart-type-radio-btn" id="projectsTypeBtn">
+                    <label class="form-check-label" for="flexRadioDefault2">
+                        Projects
+                    </label>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function(){
+             let data;
+             let chart;
+
+             google.charts.load('current', { packages: ['corechart'], callback: drawUsersChart});
+
+             $("#usersTypeBtn").on("change", drawUsersChart);
+             $("#projectsTypeBtn").on("change", drawProjectsChart);
+
+             $(".compare-btn").on("click", function(){
+                 let $this = $(this);
+                 let userId = $this.data("user-id");
+
+                 $.ajaxJson({
+                     url: @Html.Raw(Json.Serialize(Url.Action("GetTotalHoursByUser", "TimeLogsApi"))),
+                     data: { dateFrom: $("#DateFrom").val(), dateTo: $("#DateTo").val(), userId: userId },
+                     success: function(res){
+                         if (res){
+                             if (data.getNumberOfColumns() == 2) {
+                                 data.addColumn('number', res.name);
+                                 data.addColumn({ type: 'string', role: 'tooltip' });
+                             } else {
+                               data.setColumnLabel(2, res.name);
+                             }
+
+                             for(var i = 0; i < data.getNumberOfRows(); i++){
+                                data.setValue(i,2, res.hours);
+                                data.setValue(i,3, "Hours:" + res.hours);
+                             }
+
+                             let options = {
+                                 series: {
+                                     1: { type: 'line', color: 'red', lineWidth: 2 },
+                                 }
+                             };
+
+                             drawChart(options, data);
+                         }
+                     }
+                 });
+             });
+
+             function drawUsersChart(){
+                 getChartData(@Html.Raw(Json.Serialize(Url.Action("GetTotalHoursByUsers", "TimeLogsApi"))), function(res){
+                     let options = {
+                         title: 'Top 10 Users By Hours',
+                         vAxis: {
+                            title: 'User'
+                         }
+                     };
+
+                     data = google.visualization.arrayToDataTable([['Name', 'Hours',], ...res.map(r => [r.name, r.hours])]);
+
+                     drawChart(options);
+                 });
+             }
+
+             function drawProjectsChart(){
+                  getChartData(@Html.Raw(Json.Serialize(Url.Action("GetTotalHoursByProjects", "TimeLogsApi"))), function(res){
+                     let options = {
+                         title: 'Top Projects By Hours',
+                         vAxis: {
+                            title: 'Project'
+                         }
+                     };
+
+                     data = google.visualization.arrayToDataTable([['Name', 'Hours',], ...res.map(r => [r.name, r.hours])]);
+
+                     drawChart(options, data);
+                  });
+             }
+
+             function getChartData(url, callback){
+                 $.ajaxJson({
+                     url: url,
+                     data: { dateFrom: $("#DateFrom").val(), dateTo: $("#DateTo").val() },
+                     success: function(res){
+                         if (res && res.length > 0){
+                             callback(res);
+                         }
+                     }
+                 });
+             }
+
+             function drawChart(options){
+                 let defaultOptions = {
+                       height: $("#chart-container").height() - 50,
+                       chartArea: {
+                           height: '75%',
+                           width: '55%'
+                       },
+                       hAxis: {
+                         title: 'Total Hours',
+                         minValue: 0
+                       },
+                       tooltip: { isHtml: true }
+                 };
+
+                 $.extend(true, options, defaultOptions);
+
+                 if (!chart) { chart = new google.visualization.BarChart($("#timelog-hours-chart")[0]); }
+
+                 chart.draw(data, options);
+             }
+         });
+    </script>
+}

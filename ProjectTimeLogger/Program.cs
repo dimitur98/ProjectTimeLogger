@@ -1,7 +1,19 @@
+using ProjectTimeLogger.Db;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+
 var builder = WebApplication.CreateBuilder(args);
 
+ProjectTimeLoggerDb.SetupConnection(builder.Configuration.GetConnectionString("ProjectTimeLoggerDb"));
+
+
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+        options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+    }); ;
 
 var app = builder.Build();
 
@@ -22,6 +34,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Users}/{action=Search}/{id?}");
 
 app.Run();

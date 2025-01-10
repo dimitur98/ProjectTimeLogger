@@ -1,0 +1,26 @@
+﻿@model ProjectTimeLogger.ViewModels.UsersSearchFormModel
+
+<form method="get" id="search-form">
+    <div class="row">
+        <div class="col-md-4">
+            <label asp-for="DateFrom" class="form-label"></label>
+            <input asp-for="DateFrom" class="form-control" type="date" />
+            <span asp-validation-for="DateFrom"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="DateTo" class="form-label"></label>
+            <input asp-for="DateTo" class="form-control" type="date" />
+            <span asp-validation-for="DateTo"></span>
+        </div>
+
+        <div class="col-md-2  mb-2">
+            <div>
+                <label class="h6">&nbsp;</label>
+                <div>
+                    <input type="submit" value="Search" class="btn btn-info" />
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
